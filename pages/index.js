@@ -1,11 +1,16 @@
 import Head from "next/head";
 import Image from "next/image";
+import { useRouter } from "next/router";
 import styles from "../styles/Home.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMapMarkedAlt } from "@fortawesome/free-solid-svg-icons";
 import Guide from "../components/Guide";
 
 export default function Home() {
+  // const router = useRouter();
+  // const { slug } = router.query;
+  // const slug =
+
   return (
     <div>
       <Head>
@@ -41,7 +46,7 @@ export default function Home() {
           </h1>
         </main>
       </div>
-      <Guide />
+      <Guide slug={"hacker-bundle-setup"} edit={true} />
       <footer className={styles.footer}>
         <a
           href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"

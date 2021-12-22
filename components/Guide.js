@@ -1,31 +1,29 @@
 import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import cloneDeep from "lodash/cloneDeep";
 import styles from "../styles/Guide.module.css";
 import * as markerjs2 from "markerjs2";
 
 const Guide = ({
   imgHostOrigin = "https://i.img.guide",
   imgPathPrefix = "/file/img-guide/",
+  slug,
+  edit = false,
 }) => {
   let imgRefs = [];
-  const router = useRouter();
-  const { slug } = router.query;
-  const showEditButtons = slug?.[1] === "edit";
   const [editing, setEditing] = useState(false);
-  useEffect(() => {
-    setEditing(slug?.[1] === "edit");
-  }, slug);
+  // get "editing" in the correct default state for the initial render client side
+  useEffect(() => setEditing(edit), slug);
 
   const [imgState, setImgState] = useState([]);
 
   const [data, setData] = useState({ title: "Loading...", steps: [] });
-  const { title, steps } = data;
+  const { title, description, steps } = data;
 
   useEffect(() => {
     async function fetchGuide() {
-      if (!router.query.slug) return;
+      if (!slug) return;
       const res = await window.fetch(
-        `https://api.kubesail.com/pibox/guides/${slug[0]}`,
+        `https://api.kubesail.com/pibox/guides/${slug}`,
         {
           headers: {
             "content-type": "application/json",
@@ -66,14 +64,27 @@ const Guide = ({
     };
   }
 
-  function showMarkerArea(stepIndex) {
+  function showMarkerArea(stepIndex, imgIndex) {
     const img = imgRefs[stepIndex];
     if (!img) return;
     const markerArea = new markerjs2.MarkerArea(img);
     markerArea.addEventListener("render", (event) => {
       if (!img) return;
       console.log(JSON.stringify(event.state));
-      img.src = event.dataUrl;
+      const image = new Image();
+      image.src = event.dataUrl;
+      image.onload = () => {
+        resize(image, async (resizedImg) => {
+          const filename = data.steps[stepIndex].images[imgIndex].filename;
+          await upload(resizedImg, `${filename}_thumb`);
+          const newData = cloneDeep(data);
+          newData.steps[stepIndex].images[imgIndex] = {
+            filename,
+            markers: event.state,
+          };
+          setData(newData);
+        });
+      };
     });
     markerArea.show();
   }
@@ -82,14 +93,11 @@ const Guide = ({
     const uploadRes = await window.fetch("https://i.img.guide/upload", {
       method: "POST",
       headers: {
-        authorization: uploadUrl.authorizationToken,
-        "x-bz-file-name": filename,
-        "x-bz-content-sha1": digest,
-        "content-type": "image/jpeg", // TODO should infer this
+        authorization: btoa(`dan@kubesail.com:abcde`),
+        "x-img-guide-file-name": filename,
         "content-length": data.length,
       },
-      body: hexData,
-      // body: data,
+      body: data,
     });
 
     if (uploadRes.status !== 200) return "ERROR";
@@ -97,9 +105,35 @@ const Guide = ({
     return "SUCCESS";
   }
 
+  async function resize(image, callback = () => {}) {
+    // Resize the image
+    const canvas = document.createElement("canvas"),
+      max_size = 800,
+      width = image.width,
+      height = image.height;
+    if (width > height) {
+      if (width > max_size) {
+        height *= max_size / width;
+        width = max_size;
+      }
+    } else {
+      if (height > max_size) {
+        width *= max_size / height;
+        height = max_size;
+      }
+    }
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(image, 0, 0, width, height);
+    canvas.toBlob(async (blob) => {
+      const resizedImg = await blob.arrayBuffer();
+      callback(resizedImg);
+    });
+  }
+
   return (
     <div className={styles.Guide}>
-      {showEditButtons && (
+      {edit && (
         <div>
           {editing ? (
             <button onClick={() => setEditing(false)}>preview</button>
@@ -117,7 +151,6 @@ const Guide = ({
                 alert("KUBESAIL_API_KEY or KUBESAIL_API_SECRET not defined");
                 return false;
               }
-              const slug = router.query.slug[0];
               window.fetch(`https://api.kubesail.com/admin/pibox/guides`, {
                 method: "POST",
                 headers: {
@@ -137,14 +170,25 @@ const Guide = ({
       <h1>
         {editing ? (
           <input
-            value={data.title}
+            placeholder="title"
+            value={title}
             onChange={(e) => setData({ ...data, title: e.target.value })}
-            accept="image/jpeg,image/png,image/gif"
           />
         ) : (
           title
         )}
       </h1>
+      <p>
+        {editing ? (
+          <textarea
+            value={description}
+            placeholder="description"
+            onChange={(e) => setData({ ...data, description: e.target.value })}
+          />
+        ) : (
+          <div>{description}</div>
+        )}
+      </p>
       {steps.map((step, stepIndex) => (
         <div className={styles.Step} key={stepIndex}>
           <h2>
@@ -152,7 +196,7 @@ const Guide = ({
             {editing ? (
               <input
                 value={step.title}
-                onChange={(e) => {
+                onChange={(e) =>
                   setData({
                     ...data,
                     steps: [
@@ -160,8 +204,8 @@ const Guide = ({
                       { ...step, title: e.target.value },
                       ...data.steps.slice(stepIndex + 1),
                     ],
-                  });
-                }}
+                  })
+                }
               />
             ) : (
               step.title
@@ -179,7 +223,7 @@ const Guide = ({
                   "_thumb"
                 }
                 alt="sample"
-                onClick={() => showMarkerArea(stepIndex)}
+                onClick={() => showMarkerArea(stepIndex, imgState[stepIndex])}
               />
             </div>
             <div className={styles.StepLines}>
@@ -217,53 +261,36 @@ const Guide = ({
                       className={styles.StepLineBullet}
                       style={{ color: line.color }}
                     >
-                      ⬢
+                      <svg focusable="false" viewBox="0 0 512 512">
+                        <path
+                          fill="currentColor"
+                          d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"
+                        ></path>
+                      </svg>
                     </span>
                     {editing && (
                       <input
                         value={line.color}
-                        onChange={(e) =>
-                          setData({
-                            ...data,
-                            steps: [
-                              ...data.steps.slice(0, stepIndex),
-                              {
-                                ...step,
-                                lines: [
-                                  ...step.lines.slice(0, lineIndex),
-                                  { ...line, color: e.target.value },
-                                  ...step.lines.slice(lineIndex + 1),
-                                ],
-                              },
-                              ...data.steps.slice(stepIndex + 1),
-                            ],
-                          })
-                        }
+                        onChange={(e) => {
+                          const newData = cloneDeep(data);
+                          newData.steps[stepIndex].lines[lineIndex].color =
+                            e.target.value;
+                          setData(newData);
+                        }}
                       />
                     )}
                     {editing ? (
                       <textarea
                         value={line.text}
-                        onChange={(e) =>
-                          setData({
-                            ...data,
-                            steps: [
-                              ...data.steps.slice(0, stepIndex),
-                              {
-                                ...step,
-                                lines: [
-                                  ...step.lines.slice(0, lineIndex),
-                                  { ...line, text: e.target.value },
-                                  ...step.lines.slice(lineIndex + 1),
-                                ],
-                              },
-                              ...data.steps.slice(stepIndex + 1),
-                            ],
-                          })
-                        }
+                        onChange={(e) => {
+                          const newData = cloneDeep(data);
+                          newData.steps[stepIndex].lines[lineIndex].text =
+                            e.target.value;
+                          setData(newData);
+                        }}
                       />
                     ) : (
-                      line.text
+                      <span>{line.text}</span>
                     )}
                   </li>
                 ))}
@@ -271,22 +298,14 @@ const Guide = ({
                   <>
                     <span
                       className={styles.EditButton}
-                      onClick={() =>
-                        setData({
-                          ...data,
-                          steps: [
-                            ...data.steps.slice(0, stepIndex),
-                            {
-                              ...step,
-                              lines: [
-                                ...step.lines,
-                                { color: "black", text: "" },
-                              ],
-                            },
-                            ...data.steps.slice(stepIndex + 1),
-                          ],
-                        })
-                      }
+                      onClick={() => {
+                        const newData = cloneDeep(data);
+                        newData.steps[stepIndex].lines.push({
+                          color: "black",
+                          text: "",
+                        });
+                        setData(newData);
+                      }}
                     >
                       add line
                     </span>
@@ -312,47 +331,15 @@ const Guide = ({
                           resizedReader.onload = async (readerEvent) => {
                             const image = new Image();
                             image.src = readerEvent.target.result;
-                            image.onload = function () {
-                              console.log("got onload");
-                              // Resize the image
-                              var canvas = document.createElement("canvas"),
-                                max_size = 800,
-                                width = image.width,
-                                height = image.height;
-                              if (width > height) {
-                                if (width > max_size) {
-                                  height *= max_size / width;
-                                  width = max_size;
-                                }
-                              } else {
-                                if (height > max_size) {
-                                  width *= max_size / height;
-                                  height = max_size;
-                                }
-                              }
-                              canvas.width = width;
-                              canvas.height = height;
-                              canvas
-                                .getContext("2d")
-                                .drawImage(image, 0, 0, width, height);
-                              canvas.toBlob(async (blob) => {
-                                const resizedImg = await blob.arrayBuffer();
+                            image.onload = () => {
+                              resize(image, async (resizedImg) => {
                                 await upload(resizedImg, `${filename}_thumb`);
-                                // add image URL to data
-                                setData({
-                                  ...data,
-                                  steps: [
-                                    ...data.steps.slice(0, stepIndex),
-                                    {
-                                      ...step,
-                                      images: [
-                                        ...step.images,
-                                        { filename, markers: {} },
-                                      ],
-                                    },
-                                    ...data.steps.slice(stepIndex + 1),
-                                  ],
-                                });
+                                const newData = cloneDeep(data);
+                                newData.steps[stepIndex].images = [
+                                  ...step.images,
+                                  { filename, markers: {} },
+                                ];
+                                setData(newData);
                               });
                             };
                           };
