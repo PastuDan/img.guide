@@ -33,7 +33,7 @@ export default function Home() {
       <div className={styles.container}>
         <main className={styles.main}>
           <h1 className={styles.title}>
-            Create beautiful instructional guides in seconds
+            Build elegant step-by-step guides in seconds
           </h1>
         </main>
       </div>
