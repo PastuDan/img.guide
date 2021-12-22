@@ -2,7 +2,8 @@ import Head from "next/head";
 import Image from "next/image";
 import styles from "../styles/Home.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMap } from "@fortawesome/free-solid-svg-icons";
+import { faMapMarkedAlt } from "@fortawesome/free-solid-svg-icons";
+import Guide from "../components/Guide";
 
 export default function Home() {
   return (
@@ -15,8 +16,11 @@ export default function Home() {
       <header className={styles.navWrap}>
         <div className={styles.nav}>
           <div className={styles.navLogo}>
-            <FontAwesomeIcon icon={faMap} className={styles.navLogoIcon} /> Img
-            Guide
+            <FontAwesomeIcon
+              icon={faMapMarkedAlt}
+              className={styles.navLogoIcon}
+            />{" "}
+            Img Guide
           </div>
           <ul>
             {/* <li>Showcase</li> */}
@@ -33,10 +37,11 @@ export default function Home() {
       <div className={styles.container}>
         <main className={styles.main}>
           <h1 className={styles.title}>
-            Build elegant step-by-step guides in seconds
+            Create elegant step-by-step guides in seconds
           </h1>
         </main>
       </div>
+      <Guide />
       <footer className={styles.footer}>
         <a
           href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"

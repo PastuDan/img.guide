@@ -1,0 +1,73 @@
+.Guide {
+  max-width: 1000px;
+  margin: 0 auto;
+  font-size: 14px;
+}
+
+.Step {
+  padding: 30px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.StepLayout {
+  display: flex;
+}
+.Step h2 {
+  font-weight: 600;
+  margin: 0 0 30px 0;
+}
+.Step h2 b {
+  font-weight: 900;
+  margin-right: 20px;
+}
+
+.StepImgThumbnails img {
+  opacity: 0.7;
+  width: 110px;
+  border-radius: 3px;
+  margin-right: 20px;
+}
+.StepImgThumbnails img.active {
+  opacity: 1;
+  transform: translateY(-4px);
+}
+
+.StepImg {
+  width: 55%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+.StepImg img {
+  width: 100%;
+}
+.StepLines {
+  margin-left: 20px;
+  width: calc(45% - 20px);
+}
+.StepLines ul {
+  list-style: none;
+}
+.StepLines li {
+  margin: 15px 0;
+}
+.StepLineBullet {
+  margin-right: 10px;
+}
+
+.EditButton {
+  padding: 10px 20px;
+  background-color: #c5c5c5;
+  margin: 0 5px;
+}
+
+@media (max-width: 800px) {
+  .GuideWrap {
+    background-color: #333333;
+    padding: 30px 40px;
+  }
+  .Guide {
+    text-align: left;
+  }
+  .Guide p {
+    margin: 15px 6px;
+  }
+}
