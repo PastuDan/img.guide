@@ -2,17 +2,19 @@ import { useState, useEffect } from "react";
 import cloneDeep from "lodash/cloneDeep";
 import styles from "../styles/Guide.module.css";
 import * as markerjs2 from "markerjs2";
+import TextareaAutosize from "react-textarea-autosize";
+import ReactMarkdown from "react-markdown";
 
 const Guide = ({
   imgHostOrigin = "https://i.img.guide",
-  imgPathPrefix = "/file/img-guide/",
+  imgPathPrefix = "/test",
   slug,
   edit = false,
 }) => {
   let imgRefs = [];
   const [editing, setEditing] = useState(false);
   // get "editing" in the correct default state for the initial render client side
-  useEffect(() => setEditing(edit), slug);
+  useEffect(() => setEditing(edit), []);
 
   const [imgState, setImgState] = useState([]);
 
@@ -22,18 +24,24 @@ const Guide = ({
   useEffect(() => {
     async function fetchGuide() {
       if (!slug) return;
-      const res = await window.fetch(
-        `https://api.kubesail.com/pibox/guides/${slug}`,
-        {
-          headers: {
-            "content-type": "application/json",
-          },
-        }
-      );
+      let res;
+      try {
+        res = await window.fetch(
+          `${imgHostOrigin}${imgPathPrefix}/guide/${slug}`
+        );
+      } catch (err) {
+        console.error(err);
+        setData({
+          title: "Failed to load guide.",
+          description: "Failed to fetch",
+          steps: [],
+        });
+      }
       let guide;
       try {
         guide = await res.json();
-      } catch {
+      } catch (err) {
+        console.error(err);
         setData({
           title: "Failed to load guide.",
           description: "Failed to parse JSON",
@@ -42,8 +50,8 @@ const Guide = ({
         return;
       }
       if (res.status === 200) {
-        setData(guide.data);
-        setImgState(new Array(guide.data.steps.length).fill(0));
+        setData(guide);
+        setImgState(new Array(guide.steps.length).fill(0));
       } else {
         setData({
           title: "Failed to load guide.",
@@ -62,6 +70,24 @@ const Guide = ({
       window.data = data;
       console.log("saved as window.data", data);
     };
+  }
+
+  async function save() {
+    const email = window.localStorage.getItem("email");
+    const password = window.localStorage.getItem("password");
+    if (!email || !password) {
+      alert("Email or password is not defined");
+      return false;
+    }
+    console.log(`${email}:${password}`);
+    window.fetch(`https://i.img.guide/upload`, {
+      method: "POST",
+      headers: {
+        "x-img-guide-path": `guide/${slug}`,
+        authorization: `Basic ${btoa(`${email}:${password}`)}`,
+      },
+      body: JSON.stringify(data),
+    });
   }
 
   function showMarkerArea(stepIndex, imgIndex) {
@@ -90,12 +116,17 @@ const Guide = ({
   }
 
   async function upload(data, filename) {
+    const email = window.localStorage.getItem("email");
+    const password = window.localStorage.getItem("password");
+    if (!email || !password) {
+      alert("Email or password is not defined");
+      return false;
+    }
     const uploadRes = await window.fetch("https://i.img.guide/upload", {
       method: "POST",
       headers: {
-        authorization: btoa(`dan@kubesail.com:abcde`),
-        "x-img-guide-file-name": filename,
-        "content-length": data.length,
+        authorization: `Basic ${btoa(`${email}:${password}`)}`,
+        "x-img-guide-path": `img/${filename}`,
       },
       body: data,
     });
@@ -125,10 +156,14 @@ const Guide = ({
     canvas.width = width;
     canvas.height = height;
     canvas.getContext("2d").drawImage(image, 0, 0, width, height);
-    canvas.toBlob(async (blob) => {
-      const resizedImg = await blob.arrayBuffer();
-      callback(resizedImg);
-    });
+    canvas.toBlob(
+      async (blob) => {
+        const resizedImg = await blob.arrayBuffer();
+        callback(resizedImg);
+      },
+      "image/jpeg",
+      0.95
+    );
   }
 
   return (
@@ -140,31 +175,7 @@ const Guide = ({
           ) : (
             <button onClick={() => setEditing(true)}>edit</button>
           )}
-          <button
-            onClick={() => {
-              const KUBESAIL_API_KEY =
-                window.localStorage.getItem("KUBESAIL_API_KEY");
-              const KUBESAIL_API_SECRET = window.localStorage.getItem(
-                "KUBESAIL_API_SECRET"
-              );
-              if (!KUBESAIL_API_KEY || !KUBESAIL_API_SECRET) {
-                alert("KUBESAIL_API_KEY or KUBESAIL_API_SECRET not defined");
-                return false;
-              }
-              window.fetch(`https://api.kubesail.com/admin/pibox/guides`, {
-                method: "POST",
-                headers: {
-                  authorization: `Basic ${btoa(
-                    `${KUBESAIL_API_KEY}:${KUBESAIL_API_SECRET}`
-                  )}`,
-                  "content-type": "application/json",
-                },
-                body: JSON.stringify({ slug, data }),
-              });
-            }}
-          >
-            save
-          </button>
+          <button onClick={save}>save</button>
         </div>
       )}
       <h1>
@@ -180,13 +191,14 @@ const Guide = ({
       </h1>
       <p>
         {editing ? (
-          <textarea
+          <TextareaAutosize
+            style={{ width: "100%" }}
             value={description}
             placeholder="description"
             onChange={(e) => setData({ ...data, description: e.target.value })}
           />
         ) : (
-          <div>{description}</div>
+          <ReactMarkdown>{description}</ReactMarkdown>
         )}
       </p>
       {steps.map((step, stepIndex) => (
@@ -219,6 +231,7 @@ const Guide = ({
                 src={
                   imgHostOrigin +
                   imgPathPrefix +
+                  "/img/" +
                   step.images[imgState[stepIndex] || 0]?.filename +
                   "_thumb"
                 }
@@ -246,6 +259,7 @@ const Guide = ({
                         src={
                           imgHostOrigin +
                           imgPathPrefix +
+                          "/img/" +
                           image.filename +
                           "_thumb"
                         }
@@ -261,7 +275,11 @@ const Guide = ({
                       className={styles.StepLineBullet}
                       style={{ color: line.color }}
                     >
-                      <svg focusable="false" viewBox="0 0 512 512">
+                      <svg
+                        focusable="false"
+                        viewBox="0 0 512 512"
+                        style={{ height: "0.75rem" }}
+                      >
                         <path
                           fill="currentColor"
                           d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"
@@ -280,7 +298,8 @@ const Guide = ({
                       />
                     )}
                     {editing ? (
-                      <textarea
+                      <TextareaAutosize
+                        style={{ width: "100%" }}
                         value={line.text}
                         onChange={(e) => {
                           const newData = cloneDeep(data);
@@ -290,7 +309,7 @@ const Guide = ({
                         }}
                       />
                     ) : (
-                      <span>{line.text}</span>
+                      <ReactMarkdown>{line.text}</ReactMarkdown>
                     )}
                   </li>
                 ))}

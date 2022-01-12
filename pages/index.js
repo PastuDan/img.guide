@@ -1,15 +1,37 @@
+import { useState, useEffect } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import styles from "../styles/Home.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMapMarkedAlt } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faMapMarkedAlt,
+} from "@fortawesome/free-solid-svg-icons";
 import Guide from "../components/Guide";
 
 export default function Home() {
   // const router = useRouter();
   // const { slug } = router.query;
   // const slug =
+
+  const [scrolled, setScrolled] = useState(false);
+  function handleScroll() {
+    if (!scrolled && window.scrollY > 0) {
+      setScrolled(true);
+    } else if (scrolled && window.scrollY === 0) {
+      setScrolled(false);
+    }
+  }
+
+  useEffect(
+    function () {
+      if (typeof window === "undefined") return;
+      window.removeEventListener("scroll", handleScroll);
+      window.addEventListener("scroll", handleScroll);
+    },
+    [scrolled]
+  );
 
   return (
     <div>
@@ -44,18 +66,26 @@ export default function Home() {
           <h1 className={styles.title}>
             Create elegant step-by-step guides in seconds
           </h1>
+          <div
+            className={[
+              styles.example,
+              scrolled && styles.exampleScrolled,
+            ].join(" ")}
+          >
+            <div className={styles.exampleText}>check it out</div>
+            <FontAwesomeIcon
+              className={styles.exampleChevron}
+              icon={faChevronDown}
+            />
+          </div>
         </main>
       </div>
-      <Guide slug={"hacker-bundle-setup"} edit={true} />
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Made with ❤ in San Francisco
-        </a>
-      </footer>
+      <Guide
+        imgPathPrefix={"/pastudan"}
+        slug={"hacker-bundle-setup"}
+        edit={true}
+      />
+      <footer className={styles.footer}>Made with ❤ in San Francisco</footer>
     </div>
   );
 }
