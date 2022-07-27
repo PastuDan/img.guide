@@ -4,6 +4,64 @@
   font-size: 14px;
 }
 
+.Controls {
+  width: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  font-size: 24px;
+}
+.Controls span {
+  font-weight: 900;
+}
+.ControlsFloating {
+  background-color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  border-radius: 4px;
+  position: fixed;
+  width: auto;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1;
+}
+.Controls input,
+.Controls button {
+  margin: 0 8px;
+  padding: 10px 20px;
+  border: none;
+  background-color: #e4e4e4;
+  font-weight: bold;
+}
+.Controls button {
+  cursor: pointer;
+}
+
+.Controls .ControlButtonSave {
+  background-color: rgb(0, 149, 0);
+  color: white;
+}
+
+.AddStepButton {
+  text-align: center;
+  background-color: #e4e4e4;
+  border: none;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.GuideTitle {
+  font-weight: 600;
+  margin: 0 0 30px 0;
+  font-size: 20px;
+}
+.GuideDescription {
+  padding: 10px 25px;
+}
+
 .Step {
   padding: 30px 0;
   border-bottom: 1px solid #f0f0f0;
@@ -12,19 +70,37 @@
   display: flex;
 }
 .Step h2 {
-  font-weight: 600;
+  font-weight: 400;
   margin: 0 0 30px 0;
 }
 .Step h2 b {
-  font-weight: 900;
+  font-weight: 00;
   margin-right: 20px;
+}
+
+.StepImgThumbnail {
+  position: relative;
+  display: inline-block;
+  margin-right: 20px;
+}
+.thumbTrash {
+  position: absolute;
+  border-radius: 3px;
+  padding: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  top: 5px;
+  right: 5px;
+}
+.thumbTrash:hover {
+  background-color: #e4e4e4;
+  border-color: #333333;
 }
 
 .StepImgThumbnails img {
   opacity: 0.7;
   width: 110px;
   border-radius: 3px;
-  margin-right: 20px;
 }
 .StepImgThumbnails img.active {
   opacity: 1;
@@ -45,12 +121,26 @@
 }
 .StepLines ul {
   list-style: none;
+  padding: 0;
 }
 .StepLines li {
+  display: flex;
   margin: 15px 0;
+  position: relative;
 }
 .StepLineBullet {
-  margin-right: 10px;
+  margin: 10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.stepContent {
+  margin-left: 38px;
+}
+.stepContent h3,
+.stepContent p {
+  margin-top: 10px;
 }
 
 .EditButton {

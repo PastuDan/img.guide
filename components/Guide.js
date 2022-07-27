@@ -1,9 +1,22 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable jsx-a11y/alt-text */
 import { useState, useEffect } from "react";
 import cloneDeep from "lodash/cloneDeep";
 import styles from "../styles/Guide.module.css";
 import * as markerjs2 from "markerjs2";
 import TextareaAutosize from "react-textarea-autosize";
+import AutosizeInput from "react-input-autosize";
 import ReactMarkdown from "react-markdown";
+import ColorPicker from "./ColorPicker";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
+
+const email =
+  typeof window !== "undefined" && window.localStorage.getItem("email");
+const password =
+  typeof window !== "undefined" && window.localStorage.getItem("password");
+
+const markerSetups = new Set();
 
 const Guide = ({
   imgHostOrigin = "https://i.img.guide",
@@ -12,6 +25,7 @@ const Guide = ({
   edit = false,
 }) => {
   let imgRefs = [];
+
   const [editing, setEditing] = useState(false);
   // get "editing" in the correct default state for the initial render client side
   useEffect(() => setEditing(edit), []);
@@ -73,8 +87,6 @@ const Guide = ({
   }
 
   async function save() {
-    const email = window.localStorage.getItem("email");
-    const password = window.localStorage.getItem("password");
     if (!email || !password) {
       alert("Email or password is not defined");
       return false;
@@ -92,8 +104,10 @@ const Guide = ({
 
   function showMarkerArea(stepIndex, imgIndex) {
     const img = imgRefs[stepIndex];
+    markerSetups.add(stepIndex);
     if (!img) return;
     const markerArea = new markerjs2.MarkerArea(img);
+    markerArea.addEventListener("close", () => markerSetups.delete(stepIndex));
     markerArea.addEventListener("render", (event) => {
       if (!img) return;
       console.log(JSON.stringify(event.state));
@@ -109,7 +123,9 @@ const Guide = ({
             markers: event.state,
           };
           setData(newData);
+          console.log({ newData });
         });
+        console.log(markerSetups);
       };
     });
     markerArea.show();
@@ -169,19 +185,27 @@ const Guide = ({
   return (
     <div className={styles.Guide}>
       {edit && (
-        <div>
-          {editing ? (
-            <button onClick={() => setEditing(false)}>preview</button>
-          ) : (
-            <button onClick={() => setEditing(true)}>edit</button>
-          )}
-          <button onClick={save}>save</button>
+        <div className={[styles.Controls, styles.ControlsFloating].join(" ")}>
+          {editing && <div style={{ marginBottom: 10 }}>Edit Mode</div>}
+          <div>
+            {/* <AutosizeInput type="email" placeholder="Email" /> */}
+            {/* <AutosizeInput type="password" placeholder="Password" /> */}
+            {editing ? (
+              <button onClick={() => setEditing(false)}>Preview</button>
+            ) : (
+              <button onClick={() => setEditing(true)}>Edit</button>
+            )}
+            <button className={styles.ControlButtonSave} onClick={save}>
+              Save
+            </button>
+          </div>
         </div>
       )}
-      <h1>
+      <h1 className={styles.GuideTitle}>
         {editing ? (
-          <input
-            placeholder="title"
+          <AutosizeInput
+            inputClassName={styles.GuideTitle}
+            placeholder="Title"
             value={title}
             onChange={(e) => setData({ ...data, title: e.target.value })}
           />
@@ -189,12 +213,12 @@ const Guide = ({
           title
         )}
       </h1>
-      <p>
+      <p className={styles.GuideDescription}>
         {editing ? (
           <TextareaAutosize
             style={{ width: "100%" }}
             value={description}
-            placeholder="description"
+            placeholder="Overall guide description (optional)..."
             onChange={(e) => setData({ ...data, description: e.target.value })}
           />
         ) : (
@@ -236,7 +260,9 @@ const Guide = ({
                   "_thumb"
                 }
                 alt="sample"
-                onClick={() => showMarkerArea(stepIndex, imgState[stepIndex])}
+                onClick={() =>
+                  editing && showMarkerArea(stepIndex, imgState[stepIndex])
+                }
               />
             </div>
             <div className={styles.StepLines}>
@@ -244,26 +270,52 @@ const Guide = ({
                 <div className={styles.StepImgThumbnails}>
                   {step.images.map((image, imageIndex) => {
                     const setActiveImg = () => {
+                      if (markerSetups.has(stepIndex)) return;
                       setImgState([
-                        ...imgState.splice(0, stepIndex),
+                        ...imgState.slice(0, stepIndex),
                         imageIndex,
-                        ...imgState.splice(stepIndex + 1),
+                        ...imgState.slice(stepIndex + 1),
                       ]);
-                      console.log(imgState);
                     };
                     return (
-                      <img
-                        onMouseEnter={setActiveImg}
-                        onClick={setActiveImg}
-                        key={imageIndex}
-                        src={
-                          imgHostOrigin +
-                          imgPathPrefix +
-                          "/img/" +
-                          image.filename +
-                          "_thumb"
-                        }
-                      />
+                      <div className={styles.StepImgThumbnail} key={imageIndex}>
+                        <img
+                          onMouseEnter={setActiveImg}
+                          onClick={setActiveImg}
+                          src={
+                            imgHostOrigin +
+                            imgPathPrefix +
+                            "/img/" +
+                            image.filename +
+                            "_thumb"
+                          }
+                        />
+                        {editing && (
+                          <div
+                            className={styles.thumbTrash}
+                            onClick={() => {
+                              const newData = cloneDeep(data);
+                              newData.steps[stepIndex].images = [
+                                ...step.images.slice(0, imageIndex),
+                                ...step.images.slice(imageIndex + 1),
+                              ];
+                              console.log({
+                                imageIndex,
+                                imgs: step.images,
+                                nesData: newData.steps[stepIndex],
+                              });
+                              setImgState([
+                                ...imgState.slice(0, stepIndex),
+                                0,
+                                ...imgState.slice(stepIndex + 1),
+                              ]);
+                              setData(newData);
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -271,46 +323,33 @@ const Guide = ({
               <ul>
                 {step.lines.map((line, lineIndex) => (
                   <li key={lineIndex}>
-                    <span
-                      className={styles.StepLineBullet}
-                      style={{ color: line.color }}
-                    >
-                      <svg
-                        focusable="false"
-                        viewBox="0 0 512 512"
-                        style={{ height: "0.75rem" }}
-                      >
-                        <path
-                          fill="currentColor"
-                          d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"
-                        ></path>
-                      </svg>
-                    </span>
-                    {editing && (
-                      <input
-                        value={line.color}
-                        onChange={(e) => {
-                          const newData = cloneDeep(data);
-                          newData.steps[stepIndex].lines[lineIndex].color =
-                            e.target.value;
-                          setData(newData);
-                        }}
-                      />
-                    )}
-                    {editing ? (
-                      <TextareaAutosize
-                        style={{ width: "100%" }}
-                        value={line.text}
-                        onChange={(e) => {
-                          const newData = cloneDeep(data);
-                          newData.steps[stepIndex].lines[lineIndex].text =
-                            e.target.value;
-                          setData(newData);
-                        }}
-                      />
-                    ) : (
-                      <ReactMarkdown>{line.text}</ReactMarkdown>
-                    )}
+                    <ColorPicker
+                      editable={editing}
+                      currentColor={line.color}
+                      onChange={(newColor) => {
+                        const newData = cloneDeep(data);
+                        newData.steps[stepIndex].lines[lineIndex].color =
+                          newColor;
+                        setData(newData);
+                      }}
+                    />
+
+                    <div className={styles.stepContent}>
+                      {editing ? (
+                        <TextareaAutosize
+                          style={{ width: "100%" }}
+                          value={line.text}
+                          onChange={(e) => {
+                            const newData = cloneDeep(data);
+                            newData.steps[stepIndex].lines[lineIndex].text =
+                              e.target.value;
+                            setData(newData);
+                          }}
+                        />
+                      ) : (
+                        <ReactMarkdown>{line.text}</ReactMarkdown>
+                      )}
+                    </div>
                   </li>
                 ))}
                 {editing && (
@@ -326,10 +365,10 @@ const Guide = ({
                         setData(newData);
                       }}
                     >
-                      add line
+                      Add Line
                     </span>
                     <label className={styles.EditButton}>
-                      <span style={{ cursor: "pointer" }}>add image</span>
+                      <span style={{ cursor: "pointer" }}>Add Image</span>
                       <input
                         style={{ display: "none" }}
                         type="file"
@@ -373,7 +412,8 @@ const Guide = ({
         </div>
       ))}
       {editing && (
-        <span
+        <div
+          className={styles.AddStepButton}
           onClick={() => {
             setData({
               ...data,
@@ -382,8 +422,8 @@ const Guide = ({
             setImgState(new Array(data.steps.length).fill(0));
           }}
         >
-          add step
-        </span>
+          + Add Step
+        </div>
       )}
     </div>
   );
